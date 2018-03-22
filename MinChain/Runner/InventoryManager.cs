@@ -6,6 +6,7 @@ using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {
+    // 今どんなブロック持ってるのかのマネージャー
     public class InventoryManager
     {
         public const int MaximumBlockSize = 1024 * 1024; // 1MB

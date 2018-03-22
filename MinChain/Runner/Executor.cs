@@ -74,7 +74,7 @@ namespace MinChain
                 // block as floating.
                 List<ByteString> blocks;
                 if (!floatingBlocks.TryGetValue(prevId, out blocks))
-                    floatingBlocks[prevId] = blocks = new List<ByteString>();
+                    floatingBlocks[prevId] = blocks = new List<ByteString>();// 入ってなければfloatingにおいておく
                 blocks.Add(prevId);
                 return;
             }

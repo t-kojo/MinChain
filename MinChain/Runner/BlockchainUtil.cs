@@ -43,7 +43,7 @@ namespace MinChain
             const int HashLength = 32;
 
             var i = 0;
-            var ids = new byte[txIds.Count * HashLength];
+            var ids = new byte[txIds.Count * HashLength]; // 平文をハッシュ値にしてるのでマークルツリーにする
             foreach (var txId in txIds)
             {
                 Buffer.BlockCopy(
@@ -53,7 +53,7 @@ namespace MinChain
             return Hash.ComputeDoubleSHA256(ids);
         }
 
-        public static Block DeserializeBlock(byte[] data)
+        public static Block DeserializeBlock(byte[] data) // バイト列→オブジェクト
         {
             var block = Deserialize<Block>(data);
             block.Original = data;
@@ -72,7 +72,7 @@ namespace MinChain
         public static byte[] ComputeBlockId(byte[] data)
         {
             var block = Deserialize<Block>(data).Clone();
-            block.TransactionIds = null;
+            block.TransactionIds = null; // こいつら一旦消してからシリアライズする
             block.Transactions = null;
             var bytes = Serialize(block);
             return Hash.ComputeDoubleSHA256(bytes);
@@ -83,6 +83,7 @@ namespace MinChain
             return Hash.ComputeDoubleSHA256(data);
         }
 
+        // TXIN と TXOUTをまとめたものに署名する どれに署名するかはブロックチェーンで重要
         public static byte[] GetTransactionSignHash(byte[] data)
         {
             var tx = Deserialize<Transaction>(data).Clone();

@@ -21,6 +21,7 @@ namespace MinChain
                 return;
             }
 
+            // keypairの読み込み
             var keyPair = KeyPair.LoadFrom(args[0]);
 
             WriteLine("Creating new genesis block.");

@@ -11,9 +11,9 @@ namespace MinChain
         public const int MaximumBlockSize = 1024 * 1024; // 1MB
 
         public Dictionary<ByteString, byte[]> Blocks { get; }
-            = new Dictionary<ByteString, byte[]>();
+            = new Dictionary<ByteString, byte[]>(); // ブロックの一覧
         public Dictionary<ByteString, Transaction> MemoryPool { get; }
-            = new Dictionary<ByteString, Transaction>();
+            = new Dictionary<ByteString, Transaction>(); // 未処理トランザクション一覧
 
         public ConnectionManager ConnectionManager { get; set; }
         public Executor Executor { get; set; }
@@ -22,8 +22,11 @@ namespace MinChain
         {
             switch (message.Type)
             {
+                // このブロック・トランザクション持ってますか？   
                 case Advertise: return HandleAdvertise(message, peerId);
+                // くれ！   
                 case Request: return HandleRequest(message, peerId);
+                // あげる！
                 case Body: return HandleBody(message, peerId);
                 default: return Task.CompletedTask;
             }
@@ -34,12 +37,14 @@ namespace MinChain
             // Data should not contain anything. (To prevent DDoS)
             if (!message.Data.IsNull()) throw new ArgumentException();
 
+            // 自分がそのオブジェクト持ってるか？
             var haveObject = message.IsBlock ?
                 Blocks.ContainsKey(message.ObjectId) :
                 MemoryPool.ContainsKey(message.ObjectId);
             if (haveObject) return;
 
             message.Type = Request;
+            // 送ってちょうだい
             await ConnectionManager.SendAsync(message, peerId);
         }
 
@@ -51,17 +56,21 @@ namespace MinChain
             byte[] data;
             if (message.IsBlock)
             {
+                // ちゃんとしたブロック？
+                // ハッシュテーブルのそのブロックあるか見てみる
                 if (!Blocks.TryGetValue(message.ObjectId, out data)) return;
             }
             else
             {
                 Transaction tx;
+                // ちゃんとしたトランザクション
                 if (!MemoryPool.TryGetValue(message.ObjectId, out tx)) return;
                 data = tx.Original;
             }
 
             message.Type = Body;
             message.Data = data;
+            // 送ってあげる
             await ConnectionManager.SendAsync(message, peerId);
         }
 
@@ -71,6 +80,7 @@ namespace MinChain
             var data = message.Data;
             if (data.Length > MaximumBlockSize) throw new ArgumentException();
 
+            // ハッシュ値正しい？
             var id = message.IsBlock ?
                 BlockchainUtil.ComputeBlockId(data) :
                 Hash.ComputeDoubleSHA256(data);
@@ -78,12 +88,15 @@ namespace MinChain
 
             if (message.IsBlock)
             {
+                // ミューテックス
                 lock (Blocks)
                 {
                     if (Blocks.ContainsKey(message.ObjectId)) return;
+                    // ハッシュテーブルに追加
                     Blocks.Add(message.ObjectId, data);
                 }
 
+                // 前のブロックも知らなかったら前のももらう
                 var prevId = Deserialize<Block>(data).PreviousHash;
                 if (!Blocks.ContainsKey(prevId))
                 {
@@ -94,10 +107,7 @@ namespace MinChain
                         ObjectId = prevId,
                     }, peerId);
                 }
-                else
-                {
-                    Executor.ProcessBlock(data, prevId);
-                }
+                Executor.ProcessBlock(data, prevId);
             }
             else
             {
@@ -117,6 +127,7 @@ namespace MinChain
 
             message.Type = Advertise;
             message.Data = null;
+            // 他の人に教えてあげる
             await ConnectionManager.BroadcastAsync(message, peerId);
         }
     }

@@ -104,7 +104,7 @@ namespace MinChain
 
         public async Task ConnectToAsync(IPEndPoint endpoint)
         {
-            var cl = new TcpClient(AddressFamily.InterNetwork);
+            var cl = new TcpClient(AddressFamily.InterNetwork); // 楽するモジュール使ってる
             try { await cl.ConnectAsync(endpoint.Address, endpoint.Port); }
             catch (SocketException exp)
             {

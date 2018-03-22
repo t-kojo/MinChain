@@ -29,11 +29,12 @@ namespace MinChain
         {
             if (!LoadConfiguration(args)) return;
 
-            connectionManager = new ConnectionManager();
-            inventoryManager = new InventoryManager();
-            executor = new Executor();
-            miner = new Mining();
+            connectionManager = new ConnectionManager(); // ブロックチェーンの対外管理
+            inventoryManager = new InventoryManager(); // 自分のブロックチェーンの管理
+            executor = new Executor(); // ブロックの実行の実体化
+            miner = new Mining(); // マイニング実体化
 
+            // それぞれのインスタンス間のやりとり
             connectionManager.NewConnectionEstablished += NewPeer;
             connectionManager.MessageReceived += HandleMessage;
             executor.BlockExecuted += miner.Notify;
@@ -45,7 +46,7 @@ namespace MinChain
             miner.InventoryManager = inventoryManager;
             miner.Executor = executor;
 
-            inventoryManager.Blocks.Add(genesis.Id, genesis.Original);
+            inventoryManager.Blocks.Add(genesis.Id, genesis.Original); // genesisをinventryに追加
             executor.ProcessBlock(genesis.Original, genesis.PreviousHash);
 
             connectionManager.Start(config.ListenOn);
@@ -66,14 +67,17 @@ namespace MinChain
             connectionManager.Dispose();
         }
 
+        //初期化       
         bool LoadConfiguration(string[] args)
         {
+
             if (args.Length == 0)
             {
                 Console.WriteLine("Should provide configuration file path.");
                 return false;
             }
 
+            // config読み込み
             try
             {
                 config = JsonConvert.DeserializeObject<Configuration>(
@@ -87,6 +91,7 @@ namespace MinChain
                 return false;
             }
 
+            // config内の鍵情報を読み込み
             try
             {
                 myKeys = KeyPair.LoadFrom(config.KeyPairPath);
@@ -99,6 +104,7 @@ namespace MinChain
                 return false;
             }
 
+            // genesis.binの読み込み
             try
             {
                 var bytes = File.ReadAllBytes(config.GenesisPath);

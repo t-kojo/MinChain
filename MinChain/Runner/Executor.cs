@@ -62,13 +62,13 @@ namespace MinChain
 
         public void ProcessBlock(byte[] data, ByteString prevId)
         {
-            lock (this) ProcessBlockLocked(data, prevId);
+            lock (this) ProcessBlockLocked(data, prevId); //同時に複数のブロック処理しない
         }
 
         void ProcessBlockLocked(byte[] data, ByteString prevId)
         {
             Block prev;
-            if (!Blocks.TryGetValue(prevId, out prev))
+            if (!Blocks.TryGetValue(prevId, out prev)) //前のブロックがハッシュテーブルに入っているか(=処理が終わっているか)
             {
                 // If the previous block is not under the block tree, mark the
                 // block as floating.
@@ -88,9 +88,9 @@ namespace MinChain
             // If the block difficulty does not surpass the current latest,
             // skip the execution.  Once the descendant block comes later,
             // evaluate the difficulty then again.
-            if (Latest.TotalDifficulty >= block.TotalDifficulty)
+            if (Latest.TotalDifficulty >= block.TotalDifficulty) // 難易度満たしてるか・どのチェーンが重たいか
             {
-                CheckFloatingBlocks(block.Id);
+                CheckFloatingBlocks(block.Id); // まだ実行していないブロックのチェック
                 return;
             }
 
@@ -98,10 +98,10 @@ namespace MinChain
             // first revert all the applied blocks prior to the fork point in
             // past blocks, if exists.  Then apply blocks after the fork.
             var fork = BlockchainUtil.LowestCommonAncestor(
-                Latest, block, Blocks);
+                Latest, block, Blocks); // 祖先まで取得
             var revertingChain = Latest.Ancestors(Blocks)
                 .TakeWhile(x => !x.Id.Equals(fork.Id))
-                .ToList();
+                .ToList(); // 共通祖先までひとつずつUTXOを戻す
             var applyingChain = block.Ancestors(Blocks)
                 .TakeWhile(x => !x.Id.Equals(fork.Id))
                 .Reverse()
@@ -109,7 +109,7 @@ namespace MinChain
 
             revertingChain.ForEach(Revert);
 
-            int? failureIndex = null;
+            int? failureIndex = null;// ブロックがぶっ壊れている
             for (var i = 0; i < applyingChain.Count; i++)
             {
                 var applyBlock = applyingChain[i];
@@ -127,7 +127,7 @@ namespace MinChain
             }
 
             if (failureIndex.HasValue)
-            {
+            {//巻き戻し
                 // Failure occurred during the block execution.  Perform
                 // opposite to revert to the state before the execution.
                 applyingChain.Take(failureIndex.Value)
@@ -179,8 +179,8 @@ namespace MinChain
 
             foreach (var tx in block.ParsedTransactions)
             {
-                tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Remove(x));
-                tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x, x));
+                tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Remove(x)); // utxoを削除
+                tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x, x)); // utxoを追加
             }
 
             Latest = block;

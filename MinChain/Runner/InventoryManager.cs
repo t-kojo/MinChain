@@ -97,8 +97,9 @@ namespace MinChain
                     Blocks.Add(message.ObjectId, data);
                 }
 
+                var block = BlockchainUtil.DeserializeBlock(data);
                 // 前のブロックも知らなかったら前のももらう
-                var prevId = Deserialize<Block>(data).PreviousHash;
+                var prevId = block.PreviousHash;
                 if (!Blocks.ContainsKey(prevId))
                 {
                     await ConnectionManager.SendAsync(new InventoryMessage
@@ -108,7 +109,7 @@ namespace MinChain
                         ObjectId = prevId,
                     }, peerId);
                 }
-                Executor.ProcessBlock(data, prevId);
+                Executor.ProcessBlock(block);
             }
             else
             {

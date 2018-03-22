@@ -60,13 +60,15 @@ namespace MinChain
             Blocks.Add(Latest.Id, Latest);
         }
 
-        public void ProcessBlock(byte[] data, ByteString prevId)
+        public void ProcessBlock(Block block)
         {
-            lock (this) ProcessBlockLocked(data, prevId); //同時に複数のブロック処理しない
+            lock (this) ProcessBlockLocked(block); //同時に複数のブロック処理しない
         }
 
-        void ProcessBlockLocked(byte[] data, ByteString prevId)
+        void ProcessBlockLocked(Block block)
         {
+            var prevId = block.PreviousHash;
+
             Block prev;
             if (!Blocks.TryGetValue(prevId, out prev)) //前のブロックがハッシュテーブルに入っているか(=処理が終わっているか)
             {
@@ -75,14 +77,16 @@ namespace MinChain
                 List<ByteString> blocks;
                 if (!floatingBlocks.TryGetValue(prevId, out blocks))
                     floatingBlocks[prevId] = blocks = new List<ByteString>();// 入ってなければfloatingにおいておく
-                blocks.Add(prevId);
+                blocks.Add(block.Id);
                 return;
             }
 
             // Mark the block as the connected block.
-            var block = BlockchainUtil.DeserializeBlock(data);
             block.Height = prev.Height + 1;
             block.TotalDifficulty = prev.TotalDifficulty + block.Difficulty;
+
+            // Avoid processing duplicate block from the past.
+            if (Blocks.ContainsKey(block.Id)) return;
             Blocks.Add(block.Id, block);
 
             // If the block difficulty does not surpass the current latest,
@@ -157,7 +161,7 @@ namespace MinChain
                     catch { }
 
                     if (data.IsNull()) { continue; }
-                    ProcessBlockLocked(data, waitingBlockId);
+                    ProcessBlockLocked(BlockchainUtil.DeserializeBlock(data));
                 }
             }
         }
